@@ -1,24 +1,32 @@
 import random
 import sys
 import threading
-import time
 import wx
 
 class Frame(wx.Frame):
     def __init__(self, parent, title, strip):
-        self._size = 8
-        self._pad = 8
+        self._size = 6
+        self._pad = 6
         self._width = 400
         self._height = 200
-        self._xjitter = [6 * random.random() for _ in xrange(strip.numPixels())]
-        self._yjitter = [6 * random.random() for _ in xrange(strip.numPixels())]
-
-        wx.Frame.__init__(self, parent, title=title, size=(self._width, self._height))
-        # TODO: update width/height on window resize
-        self.Bind(wx.EVT_PAINT, self.OnPaint)
-        self.Bind(wx.EVT_LEFT_UP, self.OnClick)
+        self._xjitter = [3 * random.random() for _ in xrange(strip.numPixels())]
+        self._yjitter = [4 * random.random() for _ in xrange(strip.numPixels())]
 
         self._strip = strip
+
+        self._buffer = wx.EmptyBitmap(self._width, self._height)
+        self.redraw()
+        self._need_resize = False
+        self._need_update = False
+
+        wx.Frame.__init__(self, parent, title=title, size=(self._width, self._height))
+        self.Bind(wx.EVT_PAINT, self.OnPaint)
+        self.Bind(wx.EVT_SIZE, self.OnSize)
+        self.Bind(wx.EVT_LEFT_UP, self.OnClick)
+        self.Bind(wx.EVT_TIMER, self.OnTimer)
+
+        self.timer = wx.Timer(self)
+        self.timer.Start(1000/60.)
 
         self.Centre()
         self.Show()
@@ -39,15 +47,26 @@ class Frame(wx.Frame):
         return (a + b * col + jx, a + b * row + jy)
 
     def OnPaint(self, e):
-        start = time.time()
-        use_gc = True
+        dc = wx.PaintDC(self)
+        dc.DrawBitmap(self._buffer, 0, 0)
 
-        if use_gc:
-            dc = wx.GCDC(wx.PaintDC(self))
-        else:
-            dc = wx.PaintDC(self)
+    def OnSize(self, e):
+        self._need_resize = True
 
+
+    def resize(self):
+        size = self.GetClientSize()
+        self._width = size.width
+        self._height = size.height
+        self._buffer = wx.EmptyBitmap(self._width, self._height)
+        self.redraw()
+
+    def redraw(self):
+        dc = wx.GCDC(wx.MemoryDC(self._buffer))
         pixels = self._strip.getDisplayed()
+
+        dc.SetBackground(wx.Brush(wx.Colour(255, 255, 255)))
+        dc.Clear()
 
         # Draw string
         for i in xrange(1,len(pixels)):
@@ -61,16 +80,23 @@ class Frame(wx.Frame):
             x, y = self.center(i)
             dc.DrawCircle(x, y, self._size)
 
-        if use_gc:
-            self.Refresh()
+    def update(self):
+        self._need_update = True
 
-        print("time: ", time.time() - start)
+    def OnTimer(self, e):
+
+        if self._need_resize:
+            self.resize()
+            self._need_resize = False
+
+        if self._need_update:
+            self.redraw()
+            self.Refresh()
+            self._need_update = False
 
     def OnClick(self, e):
         wx.App.Get().ExitMainLoop()
         sys.exit()
-
-    def redraw():
 
 
 class Simulation(threading.Thread):
@@ -88,8 +114,8 @@ class Simulation(threading.Thread):
     def update(self):
         if not self._initialized:
             return
-        self._frame.redraw()
-        wx.PostEvent(self._frame, wx.PaintEvent()) 
+
+        self._frame.update()
 
 def Color(red, green, blue, white=0):
     return (white << 24) | (red << 16) | (green << 8) | blue
