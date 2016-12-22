@@ -1,9 +1,31 @@
+"""
+Drop-in replacement for Adafruit_Neopixel RPI library that simulates the lights.
+
+Example:
+    from neopixel import *
+    import time
+
+    LED_COUNT = 100
+    # All args after the first are ignored, but allowed for compatibility.
+    strip = Adafruit_NeoPixel(LED_COUNT)
+    # Start the simulation.
+    strip.begin()
+    i = pi = 0
+    while True:
+        strip.setPixelColorRGB(pi, 0, 0, 0)
+        strip.setPixelColorRGB(i, 255, 255, 255)
+        strip.show()
+
+        pi, i = i, (i + 1) % LED_COUNT
+        time.sleep(0.1)
+"""
 import random
 import sys
 import threading
 import wx
 
 class Frame(wx.Frame):
+    """UI for simulation."""
     def __init__(self, parent, title, strip):
         self._size = 6
         self._pad = 6
@@ -52,7 +74,6 @@ class Frame(wx.Frame):
 
     def onSize(self, e):
         self._need_resize = True
-
 
     def resize(self):
         size = self.GetClientSize()
@@ -117,8 +138,11 @@ class Simulation(threading.Thread):
 
         self._frame.update()
 
+
 def Color(red, green, blue, white=0):
+    """Packs color values into 32-bit integer."""
     return (white << 24) | (red << 16) | (green << 8) | blue
+
 
 class Adafruit_NeoPixel(object):
     def __init__(self, num, *args):
@@ -134,11 +158,12 @@ class Adafruit_NeoPixel(object):
         self._lock = threading.Lock()
 
     def begin(self):
+        """Starts the simulation."""
         self._sim = Simulation(self)
         self._sim.start()
 
     def show(self):
-        """Updates display with pixel data"""
+        """Updates simulated pixel display."""
         with self._lock:
             self._displayed = [
                 wx.Colour((c >> 16) & 0xff,
@@ -149,25 +174,70 @@ class Adafruit_NeoPixel(object):
         self._sim.update()
 
     def setPixelColor(self, n, color):
+        """Sets color of a given pixel.
+
+        Args:
+            n: index of pixel to set
+            color: 32-bit packed color value (see Color)
+
+        Raises:
+            IndexError if n is out of bounds
+        """
         self._buffer[n] = color
 
     def setPixelColorRGB(self, n, red, green, blue, white=0):
+        """Sets RGB color of a given pixel.
+
+        Args:
+            n: index of pixel to set
+            red: red value (0-255)
+            green: green value (0-255)
+            blue: blue value (0-255)
+            white: white value (0-255, currently unused)
+
+        Raises:
+            IndexError if n is out of bounds
+        """
+
         self.setPixelColor(n, Color(red, green, blue, white))
 
     def getPixels(self):
-        return self._buffer.copy()
+        """Gets pixel data array for direct manipulation.
+
+        Returns:
+            list of 32 bit color values (one per pixel).
+        """
+        return self._buffer
 
     def numPixels(self):
+        """Gets number of pixels.
+
+        Returns:
+            number of pixels
+        """
         return len(self._buffer)
 
     def getPixelColor(self, n):
+        """Gets color of a pixel.
+
+        Args:
+            n: index of pixel
+
+        Returns:
+            32-bit color value for pixel n.
+        """
         return self._buffer[n]
 
     def getDisplayed(self):
-        """Gets the array of displayed pixel data."""
+        """Gets the array of displayed pixel data.
+
+        Returns:
+            List of pixel values at time of last call to show().
+        """
         with self._lock:
             return self._displayed
 
 class ws(object):
-  SK6812_STRIP_RGBW = 0
-  SK6812W_STRIP = 1
+    """Dummy class for compat. Constants aren't actually used anywhere."""
+    SK6812_STRIP_RGBW = 0
+    SK6812W_STRIP = 1
