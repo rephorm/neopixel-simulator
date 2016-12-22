@@ -20,10 +20,10 @@ class Frame(wx.Frame):
         self._need_update = False
 
         wx.Frame.__init__(self, parent, title=title, size=(self._width, self._height))
-        self.Bind(wx.EVT_PAINT, self.OnPaint)
-        self.Bind(wx.EVT_SIZE, self.OnSize)
-        self.Bind(wx.EVT_LEFT_UP, self.OnClick)
-        self.Bind(wx.EVT_TIMER, self.OnTimer)
+        self.Bind(wx.EVT_PAINT, self.onPaint)
+        self.Bind(wx.EVT_SIZE, self.onSize)
+        self.Bind(wx.EVT_LEFT_UP, self.onClick)
+        self.Bind(wx.EVT_TIMER, self.onTimer)
 
         self.timer = wx.Timer(self)
         self.timer.Start(1000/60.)
@@ -46,11 +46,11 @@ class Frame(wx.Frame):
 
         return (a + b * col + jx, a + b * row + jy)
 
-    def OnPaint(self, e):
+    def onPaint(self, e):
         dc = wx.PaintDC(self)
         dc.DrawBitmap(self._buffer, 0, 0)
 
-    def OnSize(self, e):
+    def onSize(self, e):
         self._need_resize = True
 
 
@@ -83,7 +83,7 @@ class Frame(wx.Frame):
     def update(self):
         self._need_update = True
 
-    def OnTimer(self, e):
+    def onTimer(self, e):
 
         if self._need_resize:
             self.resize()
@@ -94,7 +94,7 @@ class Frame(wx.Frame):
             self.Refresh()
             self._need_update = False
 
-    def OnClick(self, e):
+    def onClick(self, e):
         wx.App.Get().ExitMainLoop()
         sys.exit()
 
